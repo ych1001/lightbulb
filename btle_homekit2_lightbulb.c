@@ -328,6 +328,31 @@ uint8_t apple_lightbulb_btle_homekit_gatt_db[] =
             CHAR_DESCRIPTOR_UUID128(HDLD_PAIRING_MANAGE_INSTANCE_ID,
                 UUID_APPLE_HOMEKIT_CHAR_INSTANCE_ID, LEGATTDB_PERM_READABLE),
 
+// Added for the specific service, 03Nov17, Jack Huang
+#if defined(HSENS_DEFINED)   // Begin
+    // Declare proprietary Hello Service with 128 byte UUID
+    PRIMARY_SERVICE_UUID128( HANDLE_HSENS_SERVICE, UUID_HELLO_SERVICE ),
+
+        // Declare characteristic used to notify/indicate change
+        CHARACTERISTIC_UUID128( HANDLE_HSENS_SERVICE_CHAR_NOTIFY, HANDLE_HSENS_SERVICE_CHAR_NOTIFY_VAL,
+            UUID_HELLO_CHARACTERISTIC_NOTIFY, LEGATTDB_CHAR_PROP_READ | LEGATTDB_CHAR_PROP_NOTIFY | LEGATTDB_CHAR_PROP_INDICATE, LEGATTDB_PERM_READABLE ),
+
+            // Declare client characteristic configuration descriptor
+            // Value of the descriptor can be modified by the client
+            // Value modified shall be retained during connection and across connection
+            // for bonded devices.  Setting value to 1 tells this application to send notification
+            // when value of the characteristic changes.  Value 2 is to allow indications.
+            CHAR_DESCRIPTOR_UUID16_WRITABLE( HANDLE_HSENS_SERVICE_CHAR_CFG_DESC, UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION,
+                LEGATTDB_PERM_READABLE | LEGATTDB_PERM_WRITE_REQ | LEGATTDB_PERM_AUTH_READABLE | LEGATTDB_PERM_AUTH_WRITABLE),
+
+        // Declare characteristic Hello Configuration
+        // The configuration consists of 1 bytes which indicates how many times to
+        // blink the LED when user pushes the button.
+        CHARACTERISTIC_UUID128_WRITABLE( HANDLE_HSENS_SERVICE_CHAR_BLINK, HANDLE_HSENS_SERVICE_CHAR_BLINK_VAL,
+            UUID_HELLO_CHARACTERISTIC_CONFIG, LEGATTDB_CHAR_PROP_READ | LEGATTDB_CHAR_PROP_WRITE,
+            LEGATTDB_PERM_READABLE | LEGATTDB_PERM_WRITE_CMD | LEGATTDB_PERM_WRITE_REQ ),
+#endif   // End of added, 03Nov17, Jack Huang
+
 #ifdef OTA_FIRMWARE_UPGRADE
 #ifdef BTLE_HOMEKIT_OTA_UPGRADE_FROM_WINDOWS
     /* Cypress vendor specific OTA Firmware Upgrade Service */
@@ -439,7 +464,7 @@ wiced_transport_buffer_pool_t* transport_pool;   // Trans pool for sending the R
 const wiced_transport_cfg_t transport_cfg =
 {
     WICED_TRANSPORT_UART,
-    {  WICED_TRANSPORT_UART_HCI_MODE, HCI_UART_DEFAULT_BAUD },
+    {  WICED_TRANSPORT_UART_HCI_MODE, 115200/*HCI_UART_DEFAULT_BAUD*/ },
     {  TRANS_UART_BUFFER_SIZE, 2 },
     NULL,
     hci_control_proc_rx_cmd,
@@ -1172,7 +1197,7 @@ void btle_homekit_lightbulb_app_init(void)
 void btle_homekit_lightbulb_timeout( uint32_t count )
 {
     app_timer_count++;
-    WICED_BT_TRACE("timeout %d\n", app_timer_count);
+    //WICED_BT_TRACE("timeout %d\n", app_timer_count);
     //wiced_printf(NULL, 0, "timeout %d mm_top:0x%x\n", app_timer_count, mm_top);
 
     // Reset accessory if button has been pressed more then 10 seconds
@@ -1207,7 +1232,7 @@ void btle_homekit_lightbulb_fine_timeout( uint32_t finecount )
 
 void btle_homekit_refresh_conn_idle_counter()
 {
-    connection_idle_counter = BTLE_HOMEKIT_CONN_IDLE_TIMEOUT;
+//    connection_idle_counter = BTLE_HOMEKIT_CONN_IDLE_TIMEOUT;
 }
 
 static wiced_result_t btle_homekit_lightbulb_display_password( uint8_t* srp_pairing_password )
