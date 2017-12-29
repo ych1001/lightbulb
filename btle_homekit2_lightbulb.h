@@ -104,6 +104,9 @@ enum
 // Added for the specific service, 03Nov17, Jack Huang
 #if 1   // Begin
 #define HSENS_DEFINED
+#define DEV_NOIDLE
+
+#define HSENS_LED_PIN   WICED_P26
 
 enum
 {

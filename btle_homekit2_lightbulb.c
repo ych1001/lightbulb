@@ -464,7 +464,12 @@ wiced_transport_buffer_pool_t* transport_pool;   // Trans pool for sending the R
 const wiced_transport_cfg_t transport_cfg =
 {
     WICED_TRANSPORT_UART,
-    {  WICED_TRANSPORT_UART_HCI_MODE, 115200/*HCI_UART_DEFAULT_BAUD*/ },
+// Modified for baud rate, 03Nov17, Jack Huang
+#if 1   // Begin
+    {  WICED_TRANSPORT_UART_HCI_MODE, 115200 },
+#else   // Original
+    {  WICED_TRANSPORT_UART_HCI_MODE, HCI_UART_DEFAULT_BAUD },
+#endif   // End of modified, 03Nov17, Jack Huang
     {  TRANS_UART_BUFFER_SIZE, 2 },
     NULL,
     hci_control_proc_rx_cmd,
@@ -563,6 +568,9 @@ gatt_db_lookup_table btle_homekit_lightbulb_gatt_db_attr_tbl[] =
     {HDLC_LIGHTBULB_SATURATION_VALUE,            0,      sizeof(btle_homekit_lightbulb_saturation),         sizeof(btle_homekit_lightbulb_saturation),         btle_homekit_lightbulb_saturation},
     {HDLD_LIGHTBULB_SATURATION_CLNT_CHAR_CFG,    RNWN,   sizeof(btle_homekit_lightbulb_saturation_client_cfg), sizeof(btle_homekit_lightbulb_saturation_client_cfg), btle_homekit_lightbulb_saturation_client_cfg},
     {HDLC_PAIRING_FEATURES_VALUE,                RNWD,   1,      1,      btle_homekit_pair_service_features},
+#if defined(HSENS_DEFINED)
+    {HANDLE_HSENS_SERVICE_CHAR_BLINK_VAL,        0,      sizeof(btle_homekit_lightbulb_on),                 sizeof(btle_homekit_lightbulb_on),                 btle_homekit_lightbulb_on},
+#endif
 #ifdef OTA_FIRMWARE_UPGRADE
     {HDLC_OTA_FW_UPGRADE_APP_INFO_VALUE,         RVWD,   sizeof(btle_homekit_lightbulb_fw_upgrade_app_info),sizeof(btle_homekit_lightbulb_fw_upgrade_app_info),(uint8_t*)btle_homekit_lightbulb_fw_upgrade_app_info},
 #endif
@@ -852,7 +860,7 @@ APPLICATION_START()
 
     // WICED_ROUTE_DEBUG_TO_WICED_UART to send debug strings over the WICED
     // debug interface
-    wiced_set_debug_uart(WICED_ROUTE_DEBUG_TO_WICED_UART);
+    //wiced_set_debug_uart(WICED_ROUTE_DEBUG_TO_WICED_UART);
 #endif
 
     WICED_BT_TRACE("APPLICATION_START\n");
@@ -1190,6 +1198,12 @@ void btle_homekit_lightbulb_app_init(void)
     wiced_bt_set_pairable_mode(WICED_TRUE, 0);
 #endif
 
+#if defined(HSENS_LED_PIN)
+    WICED_BT_TRACE("JH> led:%d\n", nvram_char_values.on);
+    wiced_hal_gpio_set_pin_output(HSENS_LED_PIN,
+            nvram_char_values.on ? GPIO_PIN_OUTPUT_LOW : GPIO_PIN_OUTPUT_HIGH);
+#endif
+
     WICED_BT_TRACE("_app_init exits\n");
 }
 
@@ -1213,6 +1227,7 @@ void btle_homekit_lightbulb_timeout( uint32_t count )
 
     if (!wiced_btle_homekit_is_fw_updating() && connection_idle_counter != 0 && --connection_idle_counter == 0)
     {
+        WICED_BT_TRACE("JH> idle to disconnect\n");
         wiced_bt_gatt_disconnect(btle_homekit_conn_id);
     }
 }
@@ -1232,7 +1247,10 @@ void btle_homekit_lightbulb_fine_timeout( uint32_t finecount )
 
 void btle_homekit_refresh_conn_idle_counter()
 {
-//    connection_idle_counter = BTLE_HOMEKIT_CONN_IDLE_TIMEOUT;
+// Deleted to be no idle, 03Nov17, Jack Huang
+#if !defined(DEV_NOIDLE)   // Begin
+    connection_idle_counter = BTLE_HOMEKIT_CONN_IDLE_TIMEOUT;
+#endif   // End of deleted, 03Nov17, Jack Huang
 }
 
 static wiced_result_t btle_homekit_lightbulb_display_password( uint8_t* srp_pairing_password )
@@ -1500,6 +1518,10 @@ wiced_bt_gatt_status_t btle_homekit_set_value(uint16_t handle, uint8_t *p_val, u
                     else if (handle == HDLC_LIGHTBULB_ON_VALUE)
                     {
                         nvram_char_values.on = btle_homekit_lightbulb_on[0];
+#if defined(HSENS_LED_PIN)
+                        wiced_hal_gpio_set_pin_output(HSENS_LED_PIN,
+                                nvram_char_values.on ? GPIO_PIN_OUTPUT_LOW : GPIO_PIN_OUTPUT_HIGH);
+#endif
                     }
                     else if (handle == HDLC_LIGHTBULB_HUE_VALUE)
                     {
@@ -1509,6 +1531,15 @@ wiced_bt_gatt_status_t btle_homekit_set_value(uint16_t handle, uint8_t *p_val, u
                     {
                         memcpy(&nvram_char_values.saturation, btle_homekit_lightbulb_saturation, 4);
                     }
+#if defined(HSENS_DEFINED)
+                    else  if (handle == HANDLE_HSENS_SERVICE_CHAR_BLINK_VAL)  {
+                        nvram_char_values.on = btle_homekit_lightbulb_on[0];
+#if defined(HSENS_LED_PIN)
+                        wiced_hal_gpio_set_pin_output(HSENS_LED_PIN,
+                                nvram_char_values.on ? GPIO_PIN_OUTPUT_LOW : GPIO_PIN_OUTPUT_HIGH);
+#endif
+                    }
+#endif
                     else
                     {
                         write_to_nvram = WICED_FALSE;
