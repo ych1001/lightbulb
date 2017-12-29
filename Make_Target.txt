@@ -1,0 +1,5 @@
+To test HomeKit lightbulb app, please use following make target:
+demo.hci_btle_homekit2_lightbulb-CYW920706WCDEVAL HOMEKIT=1 USE_MFI=1 OTA_FW_UPGRADE=1 SETUP_CODE=11122333 download
+
+When multiple devices are used, please add following parameter to make target and assign different BT address to each device:
+BT_DEVICE_ADDRESS=2076AABBCC01
